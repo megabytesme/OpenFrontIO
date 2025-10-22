@@ -1,7 +1,6 @@
 import { execSync } from "child_process";
 import CopyPlugin from "copy-webpack-plugin";
 import ESLintPlugin from "eslint-webpack-plugin";
-import HtmlWebpackPlugin from "html-webpack-plugin";
 import path from "path";
 import { fileURLToPath } from "url";
 import webpack from "webpack";
@@ -16,7 +15,7 @@ export default async (env, argv) => {
   const isProduction = argv.mode === "production";
 
   return {
-    entry: "./src/client/Main.ts",
+    entry: "./src/headless/index.ts",
     output: {
       publicPath: "/",
       filename: "js/[name].[contenthash].js", // Added content hash
@@ -112,21 +111,6 @@ export default async (env, argv) => {
       },
     },
     plugins: [
-      new HtmlWebpackPlugin({
-        template: "./src/client/index.html",
-        filename: "index.html",
-        // Add optimization for HTML
-        minify: isProduction
-          ? {
-              collapseWhitespace: true,
-              removeComments: true,
-              removeRedundantAttributes: true,
-              removeScriptTypeAttributes: true,
-              removeStyleLinkTypeAttributes: true,
-              useShortDoctype: true,
-            }
-          : false,
-      }),
       new webpack.DefinePlugin({
         "process.env.WEBSOCKET_URL": JSON.stringify(
           isProduction ? "" : "localhost:3000",

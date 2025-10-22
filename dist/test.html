@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Headless Client Interactive Test</title>
+    <style>
+      body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+        font-family: sans-serif;
+        display: flex;
+        height: 100vh;
+        margin: 0;
+        font-size: 14px;
+      }
+      .sidebar {
+        width: 350px;
+        background-color: #2a2a2a;
+        padding: 1.5em;
+        overflow-y: auto;
+        border-right: 1px solid #444;
+      }
+      .main-content {
+        flex-grow: 1;
+        padding: 1.5em;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      h1,
+      h2 {
+        color: #bb86fc;
+        border-bottom: 1px solid #444;
+        padding-bottom: 0.5em;
+        margin-top: 0;
+      }
+      h2 {
+        margin-top: 1.5em;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.5em;
+        font-weight: bold;
+        color: #cfcfcf;
+      }
+      select,
+      input,
+      button {
+        width: 100%;
+        padding: 0.75em;
+        border-radius: 6px;
+        border: 1px solid #555;
+        background-color: #333;
+        color: #e0e0e0;
+        font-size: 1em;
+        margin-bottom: 1em;
+        box-sizing: border-box;
+      }
+      button {
+        cursor: pointer;
+        background-color: #3700b3;
+        font-weight: bold;
+      }
+      button:hover {
+        background-color: #5e35b1;
+      }
+      button:disabled {
+        background-color: #555;
+        cursor: not-allowed;
+      }
+      .log-container {
+        flex-grow: 1;
+        background-color: #121212;
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 1em;
+        overflow-y: scroll;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .log-entry {
+        padding: 0.3em 0;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .log-entry-uwp {
+        color: #00bcd4;
+      }
+      .log-entry-state {
+        color: #9ccc65;
+      }
+      .log-entry-error {
+        color: #ef5350;
+      }
+      .state-view {
+        background-color: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 1em;
+        margin-top: 1em;
+      }
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid #444;
+        margin-bottom: 1em;
+      }
+      .tab-button {
+        background: none;
+        border: none;
+        color: #aaa;
+        padding: 0.75em 1em;
+        cursor: pointer;
+        font-size: 1em;
+        border-bottom: 2px solid transparent;
+      }
+      .tab-button.active {
+        color: #bb86fc;
+        border-bottom-color: #bb86fc;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h1>Controls</h1>
+      <div id="lobby-setup">
+        <div class="tabs">
+          <button class="tab-button active" data-tab="single-player">
+            Single-Player
+          </button>
+          <button class="tab-button" data-tab="join-live">
+            Join Live Game
+          </button>
+        </div>
+        <div id="single-player-content" class="tab-content active">
+          <h2>1. Single-Player Config</h2>
+          <label for="map">Map</label>
+          <select id="map">
+            <option value="World">World</option>
+            <option value="Europe">Europe</option>
+          </select>
+          <label for="difficulty">Difficulty</label>
+          <select id="difficulty">
+            <option value="Easy">Easy</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+          <label for="bots">Bots (0-50)</label>
+          <input type="number" id="bots" value="5" min="0" max="50" />
+          <button id="startGameBtn">Start Single-Player Game</button>
+        </div>
+        <div id="join-live-content" class="tab-content">
+          <h2>1. Join Live Game</h2>
+          <label for="lobbyId">Lobby ID or URL</label>
+          <input type="text" id="lobbyId" placeholder="Enter game ID..." />
+          <label for="playerName">Player Name</label>
+          <input type="text" id="playerName" value="TestPlayer" />
+          <button id="joinGameBtn">Join Live Game</button>
+        </div>
+      </div>
+      <div id="game-actions" style="display: none">
+        <h2>2. Game Actions</h2>
+        <label for="attackRatio">Attack Ratio (%)</label>
+        <input
+          type="range"
+          id="attackRatio"
+          value="20"
+          min="1"
+          max="100"
+        /><span id="attackRatioValue">20%</span>
+        <label>Simulate Click (x, y)</label>
+        <div style="display: flex">
+          <input type="number" id="clickX" value="500" placeholder="X" /><input
+            type="number"
+            id="clickY"
+            value="500"
+            placeholder="Y"
+          />
+        </div>
+        <button id="clickBtn">Simulate Left Click</button>
+        <button id="rightClickBtn">Simulate Right Click</button>
+        <label>Build Structure</label>
+        <select id="buildUnit">
+          <option value="">-- Select --</option>
+          <option value="City">City</option>
+          <option value="Factory">Factory</option>
+        </select>
+        <button id="buildBtn">Set Ghost & Click Map</button>
+        <button id="centerCameraBtn">Center on Player</button>
+        <button id="shutdownBtn" style="background-color: #b00020">
+          Shutdown Game
+        </button>
+      </div>
+    </div>
+    <div class="main-content">
+      <h1>Headless Client Log</h1>
+      <div id="log" class="log-container"></div>
+      <h2>Live Game State</h2>
+      <div id="state" class="state-view">Waiting for game to start...</div>
+    </div>
+
+    <script src="headless.bundle.js"></script>
+    <script>
+      var logContainer = document.getElementById("log");
+      var stateContainer = document.getElementById("state");
+      var lobbySetupDiv = document.getElementById("lobby-setup");
+      var gameActionsDiv = document.getElementById("game-actions");
+      var startGameBtn = document.getElementById("startGameBtn");
+      var joinGameBtn = document.getElementById("joinGameBtn");
+      var shutdownBtn = document.getElementById("shutdownBtn");
+      var attackRatioSlider = document.getElementById("attackRatio");
+      var attackRatioValue = document.getElementById("attackRatioValue");
+      var gameState = { tick: 0, players: 0, units: 0 };
+      var stateInterval;
+
+      window.chrome = {
+        webview: {
+          postMessage: function (message) {
+            logMessage(
+              "[UWP Received] Type: " + message.type,
+              "log-entry-uwp",
+              message.payload,
+            );
+            if (
+              message.type === "gamePrestart" ||
+              message.type === "gameStart"
+            ) {
+              lobbySetupDiv.style.display = "none";
+              gameActionsDiv.style.display = "block";
+              stateInterval = setInterval(updateStateView, 250);
+            }
+          },
+        },
+      };
+
+      function logMessage(text, className, data) {
+        var entry = document.createElement("div");
+        entry.className = "log-entry " + (className || "");
+        var textNode = document.createTextNode(
+          text + (data ? " (click to expand)" : ""),
+        );
+        var details = document.createElement("details");
+        var summary = document.createElement("summary");
+        summary.appendChild(textNode);
+        details.appendChild(summary);
+        if (data) {
+          var pre = document.createElement("pre");
+          pre.textContent = JSON.stringify(data, null, 2);
+          details.appendChild(pre);
+        }
+        entry.appendChild(details);
+        logContainer.appendChild(entry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+
+      function updateStateView() {
+        stateContainer.textContent = `Tick: ${gameState.tick} | Players: ${gameState.players} | Units: ${gameState.units}`;
+      }
+
+      function generateClientId() {
+        return Math.random().toString(36).substr(2, 8);
+      }
+
+      function getPlayToken() {
+        var COOKIE_NAME = "player_persistent_id";
+        var storedId = localStorage.getItem(COOKIE_NAME);
+        if (storedId) return storedId;
+        var newID = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+          /[xy]/g,
+          function (c) {
+            var r = (Math.random() * 16) | 0,
+              v = c == "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          },
+        );
+        localStorage.setItem(COOKIE_NAME, newID);
+        return newID;
+      }
+
+      function simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          hash = (hash << 5) - hash + char;
+          hash = hash & hash;
+        }
+        return Math.abs(hash);
+      }
+
+      const prodServerConfig = {
+        workerPath: function (gameID) {
+          if (!gameID || typeof gameID !== "string") {
+            console.error("Invalid gameID passed to workerPath");
+            return "w0";
+          }
+          const numWorkers = 20;
+          const workerIndex = simpleHash(gameID) % numWorkers;
+          return `w${workerIndex}`;
+        },
+        numWorkers: function () {
+          return 20;
+        },
+        env: function () {
+          return 2;
+        },
+        jwtAudience: function () {
+          return "openfront.io";
+        },
+        domain: function () {
+          return "openfront.io";
+        },
+        turnIntervalMs: function () {
+          return 100;
+        },
+        jwtIssuer: function () {
+          return "https://api.openfront.io";
+        },
+        gameCreationRate: function () {
+          return 0;
+        },
+        lobbyMaxPlayers: function () {
+          return 70;
+        },
+        workerIndex: function () {
+          return 0;
+        },
+        workerPort: function () {
+          return 0;
+        },
+        workerPortByIndex: function () {
+          return 0;
+        },
+        adminToken: function () {
+          return "";
+        },
+        adminHeader: function () {
+          return "";
+        },
+        gitCommit: function () {
+          return "";
+        },
+        r2Bucket: function () {
+          return "";
+        },
+        r2Endpoint: function () {
+          return "";
+        },
+        r2AccessKey: function () {
+          return "";
+        },
+        r2SecretKey: function () {
+          return "";
+        },
+        apiKey: function () {
+          return "";
+        },
+        otelEndpoint: function () {
+          return "";
+        },
+        otelAuthHeader: function () {
+          return "";
+        },
+        otelEnabled: function () {
+          return false;
+        },
+        jwkPublicKey: async function () {
+          return {};
+        },
+        subdomain: function () {
+          return "";
+        },
+        cloudflareAccountId: function () {
+          return "";
+        },
+        cloudflareApiToken: function () {
+          return "";
+        },
+        cloudflareConfigPath: function () {
+          return "";
+        },
+        cloudflareCredsPath: function () {
+          return "";
+        },
+        stripePublishableKey: function () {
+          return "";
+        },
+        allowedFlares: function () {
+          return [];
+        },
+      };
+
+      const devServerConfig = prodServerConfig;
+      const preprodServerConfig = prodServerConfig;
+
+      document.querySelectorAll(".tab-button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          document.querySelectorAll(".tab-button").forEach(function (btn) {
+            btn.classList.remove("active");
+          });
+          document.querySelectorAll(".tab-content").forEach(function (content) {
+            content.classList.remove("active");
+          });
+          button.classList.add("active");
+          document
+            .getElementById(button.getAttribute("data-tab") + "-content")
+            .classList.add("active");
+        });
+      });
+
+      startGameBtn.addEventListener("click", function () {
+        var clientId = generateClientId();
+        var lobbyConfig = {
+          serverConfig: devServerConfig,
+          cosmetics: {},
+          playerName: "TestPlayer",
+          clientID: clientId,
+          gameID: "test-game-" + Date.now(),
+          token: getPlayToken(),
+          gameStartInfo: {
+            gameID: "test-game-" + Date.now(),
+            players: [{ clientID: clientId, username: "TestPlayer" }],
+            config: {
+              gameMap: document.getElementById("map").value,
+              gameMapSize: "Normal",
+              gameType: "Singleplayer",
+              gameMode: "FFA",
+              difficulty: document.getElementById("difficulty").value,
+              bots: parseInt(document.getElementById("bots").value, 10),
+            },
+          },
+        };
+        logMessage(
+          "Initializing Single-Player Game...",
+          "log-entry-state",
+          lobbyConfig,
+        );
+        window.headlessClient.initialize(lobbyConfig);
+      });
+
+      joinGameBtn.addEventListener("click", async function () {
+        var lobbyId = document.getElementById("lobbyId").value.trim();
+        var playerName =
+          document.getElementById("playerName").value || "TestPlayer";
+        var clientId = generateClientId();
+
+        if (lobbyId.includes("#join=")) lobbyId = lobbyId.split("#join=")[1];
+        if (!lobbyId) {
+          alert("Please enter a Lobby ID.");
+          return;
+        }
+
+        let serverConfig;
+        try {
+          logMessage(
+            "Fetching server environment from https://openfront.io/api/env...",
+          );
+          const response = await fetch("https://openfront.io/api/env");
+          if (!response.ok)
+            throw new Error(`API fetch failed: ${response.status}`);
+          const env = await response.json();
+
+          logMessage(
+            `Server responded with env: ${env.game_env}`,
+            "log-entry-state",
+          );
+
+          switch (env.game_env) {
+            case "prod":
+              serverConfig = prodServerConfig;
+              break;
+            case "staging":
+              serverConfig = preprodServerConfig;
+              break;
+            case "dev":
+            default:
+              serverConfig = devServerConfig;
+              break;
+          }
+        } catch (error) {
+          logMessage(
+            `Failed to fetch server config: ${error.message}. Defaulting to production config.`,
+            "log-entry-error",
+          );
+          serverConfig = prodServerConfig;
+        }
+
+        var lobbyConfig = {
+          serverConfig: serverConfig,
+          cosmetics: {},
+          playerName: playerName,
+          clientID: clientId,
+          gameID: lobbyId,
+          token: getPlayToken(),
+          gameStartInfo: undefined,
+        };
+
+        logMessage(
+          "Initializing with live server config...",
+          "log-entry-state",
+          lobbyConfig,
+        );
+        window.headlessClient.initialize(lobbyConfig);
+      });
+
+      shutdownBtn.addEventListener("click", function () {
+        if (window.headlessClient) {
+          window.headlessClient.shutdown();
+          logMessage("Shutdown signal sent.", "log-entry-state");
+          lobbySetupDiv.style.display = "block";
+          gameActionsDiv.style.display = "none";
+          stateContainer.textContent = "Waiting for game to start...";
+          if (stateInterval) clearInterval(stateInterval);
+        }
+      });
+
+      attackRatioSlider.addEventListener("input", function () {
+        var ratio = parseInt(this.value, 10);
+        attackRatioValue.textContent = ratio + "%";
+        if (window.headlessClient) {
+          window.headlessClient.setAttackRatio(ratio);
+        }
+      });
+
+      document
+        .getElementById("clickBtn")
+        .addEventListener("click", function () {
+          var x = parseInt(document.getElementById("clickX").value, 10);
+          var y = parseInt(document.getElementById("clickY").value, 10);
+          if (window.headlessClient) {
+            window.headlessClient.simulateClick(x, y, false);
+            logMessage(`Simulated left click at (${x}, ${y})`);
+          }
+        });
+
+      document
+        .getElementById("rightClickBtn")
+        .addEventListener("click", function () {
+          var x = parseInt(document.getElementById("clickX").value, 10);
+          var y = parseInt(document.getElementById("clickY").value, 10);
+          if (window.headlessClient) {
+            window.headlessClient.simulateRightClick(x, y);
+            logMessage(`Simulated right click at (${x}, ${y})`);
+          }
+        });
+
+      document
+        .getElementById("buildBtn")
+        .addEventListener("click", function () {
+          var unitType = document.getElementById("buildUnit").value;
+          if (unitType && window.headlessClient) {
+            window.headlessClient.build(unitType);
+            logMessage(
+              `Set ghost structure to ${unitType}. Now click the map.`,
+            );
+          }
+        });
+
+      document
+        .getElementById("centerCameraBtn")
+        .addEventListener("click", function () {
+          if (window.headlessClient) {
+            window.headlessClient.centerCamera();
+            logMessage("Sent center camera command.");
+          }
+        });
+    </script>
+  </body>
+</html>

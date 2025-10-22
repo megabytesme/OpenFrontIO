@@ -477,7 +477,6 @@ export class GameView implements GameMap {
       this.humans.map((h) => [h.clientID, h.cosmetics ?? {}]),
     );
     for (const nation of this._mapData.nations) {
-      // Nations don't have client ids, so we use their name as the key instead.
       this._cosmetics.set(nation.name, {
         flag: nation.flag,
       } satisfies PlayerCosmetics);
@@ -742,6 +741,11 @@ export class GameView implements GameMap {
   }
   forEachTile(fn: (tile: TileRef) => void): void {
     return this._map.forEachTile(fn);
+  }
+  tiles(): TileRef[] {
+    const allTiles: TileRef[] = [];
+    this.forEachTile((tile) => allTiles.push(tile));
+    return allTiles;
   }
   manhattanDist(c1: TileRef, c2: TileRef): number {
     return this._map.manhattanDist(c1, c2);
